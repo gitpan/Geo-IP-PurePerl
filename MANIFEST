@@ -9,3 +9,4 @@ INSTALL
 t/0_base.t
 t/1_lookup.t
 t/2_namelookup.t
+META.yml                                 Module meta-data (added by MakeMaker)

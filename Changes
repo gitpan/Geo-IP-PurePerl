@@ -1,5 +1,8 @@
 Revision history for Perl extension Geo::IP::PurePerl.
 
+1.13  October 3rd 2004
+	Updated test case, removed www.bundesregierung.de
+
 1.12  June 2nd 2004
 	Added support for GeoIP Region, City, ISP and Organization (Frank Mather)
 	Updated country names
