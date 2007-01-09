@@ -1,8 +1,4 @@
-<<<<<<< geoip-lookup-city
-#!/usr/bin/perl -Ilib -w
-=======
 #!/usr/bin/perl -w
->>>>>>> 1.2
 
 use strict;
 

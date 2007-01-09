@@ -10,8 +10,6 @@ use Geo::IP::PurePerl;
 
 my $addr = $ARGV[0];
 
-print "hi $addr\n";
-
 my $gi = Geo::IP::PurePerl->new("/usr/local/share/GeoIP/GeoIPRegion.dat",GEOIP_STANDARD);
 
 my ($country,$region) = $gi->region_by_name($addr);
