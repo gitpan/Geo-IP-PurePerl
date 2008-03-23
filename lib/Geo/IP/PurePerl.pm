@@ -18,7 +18,7 @@ use constant GEOIP_REGION_EDITION_REV1 => 3;
 use constant GEOIP_CITY_EDITION_REV0 => 111;
 use constant GEOIP_CITY_EDITION_REV1 => 2;
 use constant GEOIP_ORG_EDITION => 110;
-use constant GEOIP_ISP_EDITION => 109;
+use constant GEOIP_ISP_EDITION => 4;
 use constant GEOIP_NETSPEED_EDITION => 10;
 use constant SEGMENT_RECORD_LENGTH => 3;
 use constant STANDARD_RECORD_LENGTH => 3;
@@ -30,59 +30,122 @@ use constant CANADA_OFFSET => 677;
 use constant WORLD_OFFSET => 1353;
 use constant FIPS_RANGE => 360;
 
-$VERSION = '1.18';
+$VERSION = '1.19';
 
 require Exporter;
 @ISA = qw(Exporter);
 
+# cheat --- try to load Sys::Mmap
+BEGIN {
+  eval "require Sys::Mmap"
+    ? Sys::Mmap->import
+    : do {
+    for (qw/ PROT_READ MAP_PRIVATE MAP_SHARED /) {
+      no strict 'refs';
+      my $unused_stub = $_; # we must use a copy
+      *$unused_stub = sub { die 'Sys::Mmap required for mmap support' };
+    }
+  } # do
+} # begin
+
+
 sub GEOIP_STANDARD(){0;}
 sub GEOIP_MEMORY_CACHE(){1;}
+
+#sub GEOIP_CHECK_CACHE(){2;}
+#sub GEOIP_INDEX_CACHE(){4;}
+sub GEOIP_MMAP_CACHE(){8;}
 
 sub GEOIP_UNKNOWN_SPEED(){0;}
 sub GEOIP_DIALUP_SPEED(){1;}
 sub GEOIP_CABLEDSL_SPEED(){2;}
 sub GEOIP_CORPORATE_SPEED(){3;}
 
-@EXPORT = qw( GEOIP_STANDARD GEOIP_MEMORY_CACHE
+@EXPORT = qw( GEOIP_STANDARD GEOIP_MEMORY_CACHE GEOIP_MMAP_CACHE
 	      GEOIP_UNKNOWN_SPEED GEOIP_DIALUP_SPEED GEOIP_CABLEDSL_SPEED GEOIP_CORPORATE_SPEED );
 my @countries = 
-(undef,"AP","EU","AD","AE","AF","AG","AI","AL","AM","AN","AO","AQ","AR","AS","AT","AU","AW","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BM","BN","BO","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","FX","GA","GB","GD","GE","GF","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IN","IO","IQ","IR","IS","IT","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","ST","SV","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TM","TN","TO","TL","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","RS","ZA","ZM","ME","ZW","A1","A2","AX","GG","IM","JE");
-my @code3s = ( undef,"AP","EU","AND","ARE","AFG","ATG","AIA","ALB","ARM","ANT","AGO","AQ","ARG","ASM","AUT","AUS","ABW","AZE","BIH","BRB","BGD","BEL","BFA","BGR","BHR","BDI","BEN","BMU","BRN","BOL","BRA","BHS","BTN","BV","BWA","BLR","BLZ","CAN","CC","COD","CAF","COG","CHE","CIV","COK","CHL","CMR","CHN","COL","CRI","CUB","CPV","CX","CYP","CZE","DEU","DJI","DNK","DMA","DOM","DZA","ECU","EST","EGY","ESH","ERI","ESP","ETH","FIN","FJI","FLK","FSM","FRO","FRA","FX","GAB","GBR","GRD","GEO","GUF","GHA","GIB","GRL","GMB","GIN","GLP","GNQ","GRC","GS","GTM","GUM","GNB","GUY","HKG","HM","HND","HRV","HTI","HUN","IDN","IRL","ISR","IND","IO","IRQ","IRN","ISL","ITA","JAM","JOR","JPN","KEN","KGZ","KHM","KIR","COM","KNA","PRK","KOR","KWT","CYM","KAZ","LAO","LBN","LCA","LIE","LKA","LBR","LSO","LTU","LUX","LVA","LBY","MAR","MCO","MDA","MDG","MHL","MKD","MLI","MMR","MNG","MAC","MNP","MTQ","MRT","MSR","MLT","MUS","MDV","MWI","MEX","MYS","MOZ","NAM","NCL","NER","NFK","NGA","NIC","NLD","NOR","NPL","NRU","NIU","NZL","OMN","PAN","PER","PYF","PNG","PHL","PAK","POL","SPM","PCN","PRI","PSE","PRT","PLW","PRY","QAT","REU","ROM","RUS","RWA","SAU","SLB","SYC","SDN","SWE","SGP","SHN","SVN","SJM","SVK","SLE","SMR","SEN","SOM","SUR","STP","SLV","SYR","SWZ","TCA","TCD","TF","TGO","THA","TJK","TKL","TKM","TUN","TON","TLS","TUR","TTO","TUV","TWN","TZA","UKR","UGA","UM","USA","URY","UZB","VAT","VCT","VEN","VGB","VIR","VNM","VUT","WLF","WSM","YEM","YT","SRB","ZAF","ZMB","MNE","ZWE","A1","A2","ALA","GGY","IMN","JEY");
-my @names = (undef,"Asia/Pacific Region","Europe","Andorra","United Arab Emirates","Afghanistan","Antigua and Barbuda","Anguilla","Albania","Armenia","Netherlands Antilles","Angola","Antarctica","Argentina","American Samoa","Austria","Australia","Aruba","Azerbaijan","Bosnia and Herzegovina","Barbados","Bangladesh","Belgium","Burkina Faso","Bulgaria","Bahrain","Burundi","Benin","Bermuda","Brunei Darussalam","Bolivia","Brazil","Bahamas","Bhutan","Bouvet Island","Botswana","Belarus","Belize","Canada","Cocos (Keeling) Islands","Congo, The Democratic Republic of the","Central African Republic","Congo","Switzerland","Cote D'Ivoire","Cook Islands","Chile","Cameroon","China","Colombia","Costa Rica","Cuba","Cape Verde","Christmas Island","Cyprus","Czech Republic","Germany","Djibouti","Denmark","Dominica","Dominican Republic","Algeria","Ecuador","Estonia","Egypt","Western Sahara","Eritrea","Spain","Ethiopia","Finland","Fiji","Falkland Islands (Malvinas)","Micronesia, Federated States of","Faroe Islands","France","France, Metropolitan","Gabon","United Kingdom","Grenada","Georgia","French Guiana","Ghana","Gibraltar","Greenland","Gambia","Guinea","Guadeloupe","Equatorial Guinea","Greece","South Georgia and the South Sandwich Islands","Guatemala","Guam","Guinea-Bissau","Guyana","Hong Kong","Heard Island and McDonald Islands","Honduras","Croatia","Haiti","Hungary","Indonesia","Ireland","Israel","India","British Indian Ocean Territory","Iraq","Iran, Islamic Republic of","Iceland","Italy","Jamaica","Jordan","Japan","Kenya","Kyrgyzstan","Cambodia","Kiribati","Comoros","Saint Kitts and Nevis","Korea, Democratic People's Republic of","Korea, Republic of","Kuwait","Cayman Islands","Kazakhstan","Lao People's Democratic Republic","Lebanon","Saint Lucia","Liechtenstein","Sri Lanka","Liberia","Lesotho","Lithuania","Luxembourg","Latvia","Libyan Arab Jamahiriya","Morocco","Monaco","Moldova, Republic of","Madagascar","Marshall Islands","Macedonia","Mali","Myanmar","Mongolia","Macau","Northern Mariana Islands","Martinique","Mauritania","Montserrat","Malta","Mauritius","Maldives","Malawi","Mexico","Malaysia","Mozambique","Namibia","New Caledonia","Niger","Norfolk Island","Nigeria","Nicaragua","Netherlands","Norway","Nepal","Nauru","Niue","New Zealand","Oman","Panama","Peru","French Polynesia","Papua New Guinea","Philippines","Pakistan","Poland","Saint Pierre and Miquelon","Pitcairn Islands","Puerto Rico","Palestinian Territory","Portugal","Palau","Paraguay","Qatar","Reunion","Romania","Russian Federation","Rwanda","Saudi Arabia","Solomon Islands","Seychelles","Sudan","Sweden","Singapore","Saint Helena","Slovenia","Svalbard and Jan Mayen","Slovakia","Sierra Leone","San Marino","Senegal","Somalia","Suriname","Sao Tome and Principe","El Salvador","Syrian Arab Republic","Swaziland","Turks and Caicos Islands","Chad","French Southern Territories","Togo","Thailand","Tajikistan","Tokelau","Turkmenistan","Tunisia","Tonga","Timor-Leste","Turkey","Trinidad and Tobago","Tuvalu","Taiwan","Tanzania, United Republic of","Ukraine","Uganda","United States Minor Outlying Islands","United States","Uruguay","Uzbekistan","Holy See (Vatican City State)","Saint Vincent and the Grenadines","Venezuela","Virgin Islands, British","Virgin Islands, U.S.","Vietnam","Vanuatu","Wallis and Futuna","Samoa","Yemen","Mayotte","Serbia","South Africa","Zambia","Montenegro","Zimbabwe","Anonymous Proxy","Satellite Provider","Aland Islands","Guernsey","Isle of Man","Jersey");
+(undef,"AP","EU","AD","AE","AF","AG","AI","AL","AM","AN","AO","AQ","AR","AS","AT","AU","AW","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BM","BN","BO","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","FX","GA","GB","GD","GE","GF","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IN","IO","IQ","IR","IS","IT","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","ST","SV","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TM","TN","TO","TL","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","RS","ZA","ZM","ME","ZW","A1","A2","AX","GG","IM","JE","BL","MF");
+my @code3s = ( undef,"AP","EU","AND","ARE","AFG","ATG","AIA","ALB","ARM","ANT","AGO","AQ","ARG","ASM","AUT","AUS","ABW","AZE","BIH","BRB","BGD","BEL","BFA","BGR","BHR","BDI","BEN","BMU","BRN","BOL","BRA","BHS","BTN","BV","BWA","BLR","BLZ","CAN","CC","COD","CAF","COG","CHE","CIV","COK","CHL","CMR","CHN","COL","CRI","CUB","CPV","CX","CYP","CZE","DEU","DJI","DNK","DMA","DOM","DZA","ECU","EST","EGY","ESH","ERI","ESP","ETH","FIN","FJI","FLK","FSM","FRO","FRA","FX","GAB","GBR","GRD","GEO","GUF","GHA","GIB","GRL","GMB","GIN","GLP","GNQ","GRC","GS","GTM","GUM","GNB","GUY","HKG","HM","HND","HRV","HTI","HUN","IDN","IRL","ISR","IND","IO","IRQ","IRN","ISL","ITA","JAM","JOR","JPN","KEN","KGZ","KHM","KIR","COM","KNA","PRK","KOR","KWT","CYM","KAZ","LAO","LBN","LCA","LIE","LKA","LBR","LSO","LTU","LUX","LVA","LBY","MAR","MCO","MDA","MDG","MHL","MKD","MLI","MMR","MNG","MAC","MNP","MTQ","MRT","MSR","MLT","MUS","MDV","MWI","MEX","MYS","MOZ","NAM","NCL","NER","NFK","NGA","NIC","NLD","NOR","NPL","NRU","NIU","NZL","OMN","PAN","PER","PYF","PNG","PHL","PAK","POL","SPM","PCN","PRI","PSE","PRT","PLW","PRY","QAT","REU","ROM","RUS","RWA","SAU","SLB","SYC","SDN","SWE","SGP","SHN","SVN","SJM","SVK","SLE","SMR","SEN","SOM","SUR","STP","SLV","SYR","SWZ","TCA","TCD","TF","TGO","THA","TJK","TKL","TKM","TUN","TON","TLS","TUR","TTO","TUV","TWN","TZA","UKR","UGA","UM","USA","URY","UZB","VAT","VCT","VEN","VGB","VIR","VNM","VUT","WLF","WSM","YEM","YT","SRB","ZAF","ZMB","MNE","ZWE","A1","A2","ALA","GGY","IMN","JEY","BLM","MAF");
+my @names = (undef,"Asia/Pacific Region","Europe","Andorra","United Arab Emirates","Afghanistan","Antigua and Barbuda",
+	"Anguilla","Albania","Armenia","Netherlands Antilles","Angola","Antarctica","Argentina","American Samoa",
+	"Austria","Australia","Aruba","Azerbaijan","Bosnia and Herzegovina","Barbados","Bangladesh","Belgium","Burkina Faso",
+	"Bulgaria","Bahrain","Burundi","Benin","Bermuda","Brunei Darussalam","Bolivia","Brazil","Bahamas","Bhutan","Bouvet Island",
+	"Botswana","Belarus","Belize","Canada","Cocos (Keeling) Islands","Congo, The Democratic Republic of the","Central African Republic",
+	"Congo","Switzerland","Cote D'Ivoire","Cook Islands","Chile","Cameroon","China","Colombia","Costa Rica","Cuba","Cape Verde",
+	"Christmas Island","Cyprus","Czech Republic","Germany","Djibouti","Denmark","Dominica","Dominican Republic","Algeria","Ecuador",
+	"Estonia","Egypt","Western Sahara","Eritrea","Spain","Ethiopia","Finland","Fiji","Falkland Islands (Malvinas)",
+	"Micronesia, Federated States of","Faroe Islands","France","France, Metropolitan","Gabon","United Kingdom","Grenada","Georgia",
+	"French Guiana","Ghana","Gibraltar","Greenland","Gambia","Guinea","Guadeloupe","Equatorial Guinea","Greece",
+	"South Georgia and the South Sandwich Islands","Guatemala","Guam","Guinea-Bissau","Guyana","Hong Kong",
+	"Heard Island and McDonald Islands","Honduras","Croatia","Haiti","Hungary","Indonesia","Ireland","Israel","India",
+	"British Indian Ocean Territory","Iraq","Iran, Islamic Republic of","Iceland","Italy","Jamaica","Jordan","Japan","Kenya",
+	"Kyrgyzstan","Cambodia","Kiribati","Comoros","Saint Kitts and Nevis","Korea, Democratic People's Republic of","Korea, Republic of",
+	"Kuwait","Cayman Islands","Kazakhstan","Lao People's Democratic Republic","Lebanon","Saint Lucia","Liechtenstein","Sri Lanka",
+	"Liberia","Lesotho","Lithuania","Luxembourg","Latvia","Libyan Arab Jamahiriya","Morocco","Monaco","Moldova, Republic of",
+	"Madagascar","Marshall Islands","Macedonia","Mali","Myanmar","Mongolia","Macau","Northern Mariana Islands","Martinique",
+	"Mauritania","Montserrat","Malta","Mauritius","Maldives","Malawi","Mexico","Malaysia","Mozambique","Namibia","New Caledonia",
+	"Niger","Norfolk Island","Nigeria","Nicaragua","Netherlands","Norway","Nepal","Nauru","Niue","New Zealand","Oman","Panama","Peru",
+	"French Polynesia","Papua New Guinea","Philippines","Pakistan","Poland","Saint Pierre and Miquelon","Pitcairn Islands","Puerto Rico",
+	"Palestinian Territory","Portugal","Palau","Paraguay","Qatar","Reunion","Romania","Russian Federation","Rwanda","Saudi Arabia",
+	"Solomon Islands","Seychelles","Sudan","Sweden","Singapore","Saint Helena","Slovenia","Svalbard and Jan Mayen","Slovakia","Sierra Leone",
+	"San Marino","Senegal","Somalia","Suriname","Sao Tome and Principe","El Salvador","Syrian Arab Republic","Swaziland",
+	"Turks and Caicos Islands","Chad","French Southern Territories","Togo","Thailand","Tajikistan","Tokelau","Turkmenistan","Tunisia",
+	"Tonga","Timor-Leste","Turkey","Trinidad and Tobago","Tuvalu","Taiwan","Tanzania, United Republic of","Ukraine","Uganda",
+	"United States Minor Outlying Islands","United States","Uruguay","Uzbekistan","Holy See (Vatican City State)",
+	"Saint Vincent and the Grenadines","Venezuela","Virgin Islands, British","Virgin Islands, U.S.","Vietnam","Vanuatu",
+	"Wallis and Futuna","Samoa","Yemen","Mayotte","Serbia","South Africa","Zambia","Montenegro","Zimbabwe","Anonymous Proxy",
+	"Satellite Provider","Aland Islands","Guernsey","Isle of Man","Jersey","Saint Barthelemy","Saint Martin");
 
 sub open {
   die "Geo::IP::PurePerl::open() requires a path name"
     unless( @_ > 1 and $_[1] );
   my ($class, $db_file, $flags) = @_;
-  my $fh = new FileHandle;
+  my $fh = FileHandle->new;
   my $gi;
-  CORE::open $fh, "$db_file" or die "Error opening $db_file";
+  CORE::open $fh, $db_file or die "Error opening $db_file";
   binmode($fh);
-  if ($flags && $flags & GEOIP_MEMORY_CACHE == 1) {
-    local($/) = undef;
+  if ( $flags && ( $flags & ( GEOIP_MEMORY_CACHE | GEOIP_MMAP_CACHE ) ) ) {
     my %self;
+
+    if ( $flags & GEOIP_MMAP_CACHE ) {
+      die "Sys::Mmap required for MMAP support"
+        unless defined $Sys::Mmap::VERSION;
+      mmap( $self{buf} = undef, 0, PROT_READ, MAP_PRIVATE, $fh )
+        or die "mmap: $!";
+    }
+    else {
+      local $/ = undef;
+      $self{buf} = <$fh>;
+    }
     $self{fh} = $fh;
-    $self{buf} = <$fh>;
     $gi = bless \%self, $class;
-    $gi->_setup_segments(); 
-  } else {
-    $gi = bless {fh => $fh}, $class;
-    $gi->_setup_segments();
-    return $gi;
   }
+  else {
+    $gi = bless { fh => $fh }, $class;
+  }
+  $gi->_setup_segments();
+  return $gi;
 }
 
 sub new {
   my ($class, $db_file, $flags) = @_;
   # this will be less messy once deprecated new( $path, [$flags] )
   # is no longer supported (that's what open() is for)
+
+  my $def_db_file = '/usr/local/share/GeoIP/GeoIP.dat';
+    if ($^O eq 'NetWare') {
+    $def_db_file = 'sys:/etc/GeoIP/GeoIP.dat';
+  } elsif ($^O eq 'MSWin32') {
+    $def_db_file = 'c:/GeoIP/GeoIP.dat';
+  }
   if ( !defined $db_file ) {
     # called as new()
-    $db_file = '/usr/local/share/GeoIP/GeoIP.dat';
-  } elsif ( $db_file eq GEOIP_MEMORY_CACHE  or  $db_file eq GEOIP_STANDARD ) {
+    $db_file = $def_db_file;
+  } elsif ( $db_file =~ /^\d+$/	) {
+    # db_file is GEOIP_MEMORY_CACHE or GEOIP_STANDARD
     # called as new( $flags )
     $flags = $db_file;
-    $db_file = '/usr/local/share/GeoIP/GeoIP.dat';
+    $db_file = $def_db_file;
   } # else called as new( $database_filename, [$flags] );
 
   $class->open( $db_file, $flags );
@@ -136,7 +199,8 @@ sub _setup_segments {
 
         #record length is four for ISP databases and ORG databases
         #record length is three for country databases, region database and city databases
-        if ($gi->{"databaseType"} == GEOIP_ORG_EDITION) {
+        if ($gi->{"databaseType"} == GEOIP_ORG_EDITION ||
+	    $gi->{"databaseType"} == GEOIP_ISP_EDITION) {
           $gi->{"record_length"} = ORG_RECORD_LENGTH;
         }
       }
@@ -162,14 +226,17 @@ sub _seek_country {
 
   my ($x0, $x1);
 
+  my $reclen = $gi->{"record_length"};
+
   for (my $depth = 31; $depth >= 0; $depth--) {
-    if ($fh) {
-      seek $fh, $offset * 2 * $gi->{"record_length"}, 0;
-      read $fh, $x0, $gi->{"record_length"};
-      read $fh, $x1, $gi->{"record_length"};
+    unless ( exists $gi->{buf} ) {
+      seek $fh, $offset * 2 * $reclen, 0;
+      read $fh, $x0, $reclen;
+      read $fh, $x1, $reclen;
     } else {
-      $x0 = substr($gi->{buf}, $offset * 2 * $gi->{"record_length"}, $gi->{"record_length"});
-      $x1 = substr($gi->{buf}, $offset * 2 * $gi->{"record_length"} + $gi->{"record_length"}, $gi->{"record_length"});
+      
+      $x0 = substr($gi->{buf}, $offset * 2 * $reclen, $reclen);
+      $x1 = substr($gi->{buf}, $offset * 2 * $reclen + $reclen, $reclen);
     }
 
     $x0 = unpack("V1", $x0."\0");
@@ -281,10 +348,16 @@ sub get_city_record {
   }
   #set the record pointer to location of the city record
   my $record_pointer = $seek_country + (2 * $gi->{"record_length"} - 1) * $gi->{"databaseSegments"};
-  seek($gi->{"fh"}, $record_pointer, 0);
 
-  read($gi->{"fh"},$record_buf,FULL_RECORD_LENGTH);
-  $record_buf_pos = 0;
+  unless ( exists $gi->{buf} ) {
+    seek( $gi->{"fh"}, $record_pointer, 0 );
+    read( $gi->{"fh"}, $record_buf, FULL_RECORD_LENGTH );
+    $record_buf_pos = 0;
+  }
+  else {
+	  $record_buf = substr($gi->{buf}, $record_pointer, FULL_RECORD_LENGTH);
+    $record_buf_pos = 0;
+  }
 
   #get the country
   $char = ord(substr($record_buf,$record_buf_pos,1));
@@ -395,8 +468,14 @@ sub org_by_name {
   }
 
   $record_pointer = $seek_org + (2 * $gi->{"record_length"} - 1) * $gi->{"databaseSegments"};
-  seek($gi->{"fh"}, $record_pointer, 0);
-  read($gi->{"fh"},$org_buf,MAX_ORG_RECORD_LENGTH);
+
+  unless ( exists $gi->{buf} ) {
+    seek( $gi->{"fh"}, $record_pointer, 0 );
+    read( $gi->{"fh"}, $org_buf, MAX_ORG_RECORD_LENGTH );
+  }
+  else {
+    $org_buf = substr($gi->{buf}, $record_pointer, MAX_ORG_RECORD_LENGTH );
+  }
 
   $char = ord(substr($org_buf,0,1));
   while ($char != 0) {
@@ -446,7 +525,8 @@ sub region_by_name {
     }
   }
 }
-sub get_ip_address() {
+
+sub get_ip_address {
   my ($gi, $host) = @_;
   my $ip_address;
   #check if host is ip address 
@@ -496,7 +576,14 @@ sub database_info {
   }   
   return "";
 }
+sub DESTROY {
+  my $gi = shift;
 
+  if ( exists $gi->{buf} && $gi->{flags} && ( $gi->{flags} & GEOIP_MMAP_CACHE ) ) {
+    munmap( $gi->{buf} ) or die "munmap: $!";
+	  delete $gi->{buf};
+  }
+}
 1;
 __END__
 
@@ -610,11 +697,18 @@ http://sourceforge.net/projects/geoip/
 
 =head1 VERSION
 
-1.16
+1.19
+
+=head1 SEE ALSO
+
+Geo::IP - this now has the PurePerl code merged it, so it supports
+both XS and Pure Perl implementations.  The XS implementation is
+a wrapper around the GeoIP C API, which is much faster than the
+Pure Perl API.
 
 =head1 AUTHOR
 
-Copyright (c) 2005 MaxMind LLC
+Copyright (c) 2008 MaxMind Inc
 
 All rights reserved.  This package is free software; it is licensed
 under the GPL.
