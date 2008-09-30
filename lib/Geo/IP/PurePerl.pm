@@ -30,7 +30,7 @@ use constant CANADA_OFFSET => 677;
 use constant WORLD_OFFSET => 1353;
 use constant FIPS_RANGE => 360;
 
-$VERSION = '1.21';
+$VERSION = '1.22';
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -418,16 +418,16 @@ sub get_city_record {
   }
   $record_longitude = ($longitude/10000) - 180;
 
-  #get the dma code and the area code
+  #get the metro code and the area code
   if (GEOIP_CITY_EDITION_REV1 == $gi->{"databaseType"}) {
     $metroarea_combo = 0;
     if ($record_country_code eq "US") {
-      #if the country is US then read the dma area combo
+      #if the country is US then read the metro area combo
       for ($j = 0;$j < 3;++$j) {
         $char = ord(substr($record_buf,$record_buf_pos++,1));
         $metroarea_combo += ($char << ($j * 8));
       }
-      #split the dma area combo into the dma code and the area code
+      #split the metro area combo into the metro code and the area code
       $record_metro_code = int($metroarea_combo/1000);
       $record_area_code = $metroarea_combo%1000;
     }
@@ -696,7 +696,7 @@ Returns database string, includes version, date, build number and copyright noti
   my $href = $gi->get_city_record($addr);
 
 The hash include the following keys:
-country_code, country_code3, country_name, region, city, postal_code, latitude, longitude, metro_code, area_code, dma_code
+country_code, country_code3, country_name, region, city, postal_code, latitude, longitude, metro_code, area_code
 
 =back
 
@@ -707,7 +707,7 @@ http://sourceforge.net/projects/geoip/
 
 =head1 VERSION
 
-1.21
+1.22
 
 =head1 SEE ALSO
 
