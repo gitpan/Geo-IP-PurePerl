@@ -34,12 +34,12 @@ use constant GEOIP_STATE_BEGIN_REV0 => 16700000;
 use constant GEOIP_STATE_BEGIN_REV1 => 16000000;
 use constant STRUCTURE_INFO_MAX_SIZE => 20;
 use constant DATABASE_INFO_MAX_SIZE => 100;
-use constant GEOIP_COUNTRY_EDITION => 106;
-use constant GEOIP_REGION_EDITION_REV0 => 112;
+use constant GEOIP_COUNTRY_EDITION => 1;
+use constant GEOIP_REGION_EDITION_REV0 => 7; 
 use constant GEOIP_REGION_EDITION_REV1 => 3;
-use constant GEOIP_CITY_EDITION_REV0 => 111;
+use constant GEOIP_CITY_EDITION_REV0 => 6;
 use constant GEOIP_CITY_EDITION_REV1 => 2;
-use constant GEOIP_ORG_EDITION => 110;
+use constant GEOIP_ORG_EDITION => 5;
 use constant GEOIP_ISP_EDITION => 4;
 use constant GEOIP_PROXY_EDITION => 8;
 use constant GEOIP_ASNUM_EDITION => 9;
@@ -55,22 +55,28 @@ use constant CANADA_OFFSET => 677;
 use constant WORLD_OFFSET => 1353;
 use constant FIPS_RANGE => 360;
 
-$VERSION = '1.23';
+$VERSION = '1.24';
 
 require Exporter;
 @ISA = qw(Exporter);
 
 # cheat --- try to load Sys::Mmap
 BEGIN {
-  eval "require Sys::Mmap"
-    ? Sys::Mmap->import
-    : do {
-    for (qw/ PROT_READ MAP_PRIVATE MAP_SHARED /) {
-      no strict 'refs';
-      my $unused_stub = $_; # we must use a copy
-      *$unused_stub = sub { die 'Sys::Mmap required for mmap support' };
-    }
-  } # do
+  eval { 
+     # wrap into eval again, as workaround for centos / mod_perl issue
+     # seems they use $@ without eval somewhere
+    
+    eval "require Sys::Mmap"
+      ? Sys::Mmap->import
+      : do {
+        for (qw/ PROT_READ MAP_PRIVATE MAP_SHARED /) {
+          no strict 'refs';
+          my $unused_stub = $_; # we must use a copy
+          *$unused_stub = sub { die 'Sys::Mmap required for mmap support' };
+        } # for
+      }; # do
+    1;
+  }; # eval
 } # begin
 
 
@@ -90,7 +96,7 @@ sub GEOIP_CORPORATE_SPEED(){3;}
 	      GEOIP_UNKNOWN_SPEED GEOIP_DIALUP_SPEED GEOIP_CABLEDSL_SPEED GEOIP_CORPORATE_SPEED );
 my @countries = 
 (undef,"AP","EU","AD","AE","AF","AG","AI","AL","AM","AN","AO","AQ","AR","AS","AT","AU","AW","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BM","BN","BO","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","FX","GA","GB","GD","GE","GF","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IN","IO","IQ","IR","IS","IT","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","ST","SV","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TM","TN","TO","TL","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","RS","ZA","ZM","ME","ZW","A1","A2","O1","AX","GG","IM","JE","BL","MF");
-my @code3s = ( undef,"AP","EU","AND","ARE","AFG","ATG","AIA","ALB","ARM","ANT","AGO","AQ","ARG","ASM","AUT","AUS","ABW","AZE","BIH","BRB","BGD","BEL","BFA","BGR","BHR","BDI","BEN","BMU","BRN","BOL","BRA","BHS","BTN","BV","BWA","BLR","BLZ","CAN","CC","COD","CAF","COG","CHE","CIV","COK","CHL","CMR","CHN","COL","CRI","CUB","CPV","CX","CYP","CZE","DEU","DJI","DNK","DMA","DOM","DZA","ECU","EST","EGY","ESH","ERI","ESP","ETH","FIN","FJI","FLK","FSM","FRO","FRA","FX","GAB","GBR","GRD","GEO","GUF","GHA","GIB","GRL","GMB","GIN","GLP","GNQ","GRC","GS","GTM","GUM","GNB","GUY","HKG","HM","HND","HRV","HTI","HUN","IDN","IRL","ISR","IND","IO","IRQ","IRN","ISL","ITA","JAM","JOR","JPN","KEN","KGZ","KHM","KIR","COM","KNA","PRK","KOR","KWT","CYM","KAZ","LAO","LBN","LCA","LIE","LKA","LBR","LSO","LTU","LUX","LVA","LBY","MAR","MCO","MDA","MDG","MHL","MKD","MLI","MMR","MNG","MAC","MNP","MTQ","MRT","MSR","MLT","MUS","MDV","MWI","MEX","MYS","MOZ","NAM","NCL","NER","NFK","NGA","NIC","NLD","NOR","NPL","NRU","NIU","NZL","OMN","PAN","PER","PYF","PNG","PHL","PAK","POL","SPM","PCN","PRI","PSE","PRT","PLW","PRY","QAT","REU","ROM","RUS","RWA","SAU","SLB","SYC","SDN","SWE","SGP","SHN","SVN","SJM","SVK","SLE","SMR","SEN","SOM","SUR","STP","SLV","SYR","SWZ","TCA","TCD","TF","TGO","THA","TJK","TKL","TKM","TUN","TON","TLS","TUR","TTO","TUV","TWN","TZA","UKR","UGA","UM","USA","URY","UZB","VAT","VCT","VEN","VGB","VIR","VNM","VUT","WLF","WSM","YEM","YT","SRB","ZAF","ZMB","MNE","ZWE","A1","A2","O1","ALA","GGY","IMN","JEY","BLM","MAF");
+my @code3s = ( undef,"AP","EU","AND","ARE","AFG","ATG","AIA","ALB","ARM","ANT","AGO","AQ","ARG","ASM","AUT","AUS","ABW","AZE","BIH","BRB","BGD","BEL","BFA","BGR","BHR","BDI","BEN","BMU","BRN","BOL","BRA","BHS","BTN","BV","BWA","BLR","BLZ","CAN","CC","COD","CAF","COG","CHE","CIV","COK","CHL","CMR","CHN","COL","CRI","CUB","CPV","CX","CYP","CZE","DEU","DJI","DNK","DMA","DOM","DZA","ECU","EST","EGY","ESH","ERI","ESP","ETH","FIN","FJI","FLK","FSM","FRO","FRA","FX","GAB","GBR","GRD","GEO","GUF","GHA","GIB","GRL","GMB","GIN","GLP","GNQ","GRC","GS","GTM","GUM","GNB","GUY","HKG","HM","HND","HRV","HTI","HUN","IDN","IRL","ISR","IND","IO","IRQ","IRN","ISL","ITA","JAM","JOR","JPN","KEN","KGZ","KHM","KIR","COM","KNA","PRK","KOR","KWT","CYM","KAZ","LAO","LBN","LCA","LIE","LKA","LBR","LSO","LTU","LUX","LVA","LBY","MAR","MCO","MDA","MDG","MHL","MKD","MLI","MMR","MNG","MAC","MNP","MTQ","MRT","MSR","MLT","MUS","MDV","MWI","MEX","MYS","MOZ","NAM","NCL","NER","NFK","NGA","NIC","NLD","NOR","NPL","NRU","NIU","NZL","OMN","PAN","PER","PYF","PNG","PHL","PAK","POL","SPM","PCN","PRI","PSE","PRT","PLW","PRY","QAT","REU","ROU","RUS","RWA","SAU","SLB","SYC","SDN","SWE","SGP","SHN","SVN","SJM","SVK","SLE","SMR","SEN","SOM","SUR","STP","SLV","SYR","SWZ","TCA","TCD","TF","TGO","THA","TJK","TKL","TKM","TUN","TON","TLS","TUR","TTO","TUV","TWN","TZA","UKR","UGA","UM","USA","URY","UZB","VAT","VCT","VEN","VGB","VIR","VNM","VUT","WLF","WSM","YEM","YT","SRB","ZAF","ZMB","MNE","ZWE","A1","A2","O1","ALA","GGY","IMN","JEY","BLM","MAF");
 my @names = (undef,"Asia/Pacific Region","Europe","Andorra","United Arab Emirates","Afghanistan","Antigua and Barbuda",
 	"Anguilla","Albania","Armenia","Netherlands Antilles","Angola","Antarctica","Argentina","American Samoa",
 	"Austria","Australia","Aruba","Azerbaijan","Bosnia and Herzegovina","Barbados","Bangladesh","Belgium","Burkina Faso",
@@ -141,6 +147,9 @@ sub open_type {
     GEOIP_NETSPEED_EDITION()    => 'GeoIPNetSpeed',
     GEOIP_DOMAIN_EDITION()      => 'GeoIPDomain',
   );
+
+  # backward compatibility for 2003 databases.
+  $type -= 105 if $type >= 106;
 
   my $name = $type_dat_name_mapper{$type};
   die("Invalid database type $type\n") unless $name;
@@ -244,6 +253,9 @@ sub _setup_segments {
       #read the databasetype
       $gi->{"databaseType"} = ord($a);
 
+      # backward compatibility for 2003 databases.
+      $gi->{databaseType} -= 105 if $gi->{databaseType} >= 106;
+
       #chose the database segment for the database type
       #if database Type is GEOIP_REGION_EDITION then use database segment GEOIP_STATE_BEGIN
       if ($gi->{"databaseType"} == GEOIP_REGION_EDITION_REV0) {
@@ -257,6 +269,7 @@ sub _setup_segments {
       elsif (($gi->{"databaseType"} == GEOIP_CITY_EDITION_REV0) ||
         ($gi->{"databaseType"} == GEOIP_CITY_EDITION_REV1) ||
         ($gi->{"databaseType"} == GEOIP_ORG_EDITION) ||
+        ($gi->{"databaseType"} == GEOIP_ASNUM_EDITION) ||
         ($gi->{"databaseType"} == GEOIP_ISP_EDITION)) {
         $gi->{"databaseSegments"} = 0;
 
@@ -583,7 +596,7 @@ sub region_by_name {
   return unless $ip_address;
   if ($gi->{"databaseType"} == GEOIP_REGION_EDITION_REV0) {
     my $seek_region = $gi->_seek_country(addr_to_num($ip_address)) - GEOIP_STATE_BEGIN_REV0;
-    if ($seek_region < 1000) {
+    if ($seek_region >= 1000) {
       return ("US",chr(($seek_region - 1000)/26 + 65) . chr(($seek_region - 1000)%26 + 65));
     } else {
       return ($countries[$seek_region],"");
