@@ -55,7 +55,7 @@ use constant CANADA_OFFSET => 677;
 use constant WORLD_OFFSET => 1353;
 use constant FIPS_RANGE => 360;
 
-$VERSION = '1.24';
+$VERSION = '1.25';
 
 require Exporter;
 @ISA = qw(Exporter);
@@ -270,6 +270,7 @@ sub _setup_segments {
         ($gi->{"databaseType"} == GEOIP_CITY_EDITION_REV1) ||
         ($gi->{"databaseType"} == GEOIP_ORG_EDITION) ||
         ($gi->{"databaseType"} == GEOIP_ASNUM_EDITION) ||
+        ($gi->{"databaseType"} == GEOIP_DOMAIN_EDITION) ||
         ($gi->{"databaseType"} == GEOIP_ISP_EDITION)) {
         $gi->{"databaseSegments"} = 0;
 
@@ -282,8 +283,9 @@ sub _setup_segments {
         #record length is four for ISP databases and ORG databases
         #record length is three for country databases, region database and city databases
         if ($gi->{"databaseType"} == GEOIP_ORG_EDITION ||
-	    $gi->{"databaseType"} == GEOIP_ISP_EDITION) {
-          $gi->{"record_length"} = ORG_RECORD_LENGTH;
+	        $gi->{"databaseType"} == GEOIP_ISP_EDITION ||
+	        $gi->{"databaseType"} == GEOIP_DOMAIN_EDITION) {
+            $gi->{"record_length"} = ORG_RECORD_LENGTH;
         }
       }
       last;
@@ -872,7 +874,7 @@ http://sourceforge.net/projects/geoip/
 
 =head1 VERSION
 
-1.23
+1.25
 
 =head1 SEE ALSO
 
@@ -883,7 +885,7 @@ Pure Perl API.
 
 =head1 AUTHOR
 
-Copyright (c) 2008 MaxMind Inc
+Copyright (c) 2010 MaxMind Inc
 
 All rights reserved.  This package is free software; it is licensed
 under the GPL.
